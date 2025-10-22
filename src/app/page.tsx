@@ -28,7 +28,7 @@ interface Order {
   events: TrackingEvent[]
 }
 
-// Dados de exemplo iniciais
+// Dados de exemplo
 const initialOrders: Order[] = [
   {
     id: '1',
@@ -101,7 +101,7 @@ const initialOrders: Order[] = [
 
 export default function TrackingSystem() {
   const [currentView, setCurrentView] = useState<'public' | 'admin' | 'login'>('public')
-  const [orders, setOrders] = useState<Order[]>([])
+  const [orders, setOrders] = useState<Order[]>(initialOrders)
   const [searchCode, setSearchCode] = useState('')
   const [foundOrder, setFoundOrder] = useState<Order | null>(null)
   const [showOrderForm, setShowOrderForm] = useState(false)
@@ -113,36 +113,6 @@ export default function TrackingSystem() {
 
   // Senha do admin (em produção, use variáveis de ambiente)
   const ADMIN_PASSWORD = 'admin123'
-
-  // Chave para localStorage
-  const STORAGE_KEY = 'tracklog_orders'
-
-  // Carregar dados do localStorage quando o componente montar
-  useEffect(() => {
-    const savedOrders = localStorage.getItem(STORAGE_KEY)
-    if (savedOrders) {
-      try {
-        const parsedOrders = JSON.parse(savedOrders)
-        setOrders(parsedOrders)
-      } catch (error) {
-        console.error('Erro ao carregar dados salvos:', error)
-        // Se houver erro, usar dados iniciais
-        setOrders(initialOrders)
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(initialOrders))
-      }
-    } else {
-      // Se não há dados salvos, usar dados iniciais
-      setOrders(initialOrders)
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(initialOrders))
-    }
-  }, [])
-
-  // Salvar dados no localStorage sempre que orders mudar
-  useEffect(() => {
-    if (orders.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(orders))
-    }
-  }, [orders])
 
   // Função para login do admin
   const handleAdminLogin = () => {
@@ -198,13 +168,13 @@ export default function TrackingSystem() {
         }
       ]
     }
-    setOrders(prevOrders => [...prevOrders, newOrder])
+    setOrders([...orders, newOrder])
     setShowOrderForm(false)
   }
 
   // Função para atualizar status do pedido
   const updateOrderStatus = (orderId: string, newStatus: Order['status'], location: string, description: string) => {
-    setOrders(prevOrders => prevOrders.map(order => {
+    setOrders(orders.map(order => {
       if (order.id === orderId) {
         const newEvent: TrackingEvent = {
           id: Date.now().toString(),
@@ -226,20 +196,7 @@ export default function TrackingSystem() {
 
   // Função para deletar pedido
   const deleteOrder = (orderId: string) => {
-    setOrders(prevOrders => prevOrders.filter(order => order.id !== orderId))
-  }
-
-  // Função para editar pedido
-  const handleEditOrder = (orderData: Partial<Order>) => {
-    if (editingOrder) {
-      setOrders(prevOrders => prevOrders.map(order => 
-        order.id === editingOrder.id 
-          ? { ...order, ...orderData }
-          : order
-      ))
-      setEditingOrder(null)
-    }
-    setShowOrderForm(false)
+    setOrders(orders.filter(order => order.id !== orderId))
   }
 
   // Componente de login do admin
@@ -839,7 +796,19 @@ export default function TrackingSystem() {
       {showOrderForm && (
         <OrderForm
           order={editingOrder || undefined}
-          onSubmit={editingOrder ? handleEditOrder : handleCreateOrder}
+          onSubmit={(data) => {
+            if (editingOrder) {
+              setOrders(orders.map(order => 
+                order.id === editingOrder.id 
+                  ? { ...order, ...data }
+                  : order
+              ))
+              setEditingOrder(null)
+            } else {
+              handleCreateOrder(data)
+            }
+            setShowOrderForm(false)
+          }}
           onCancel={() => {
             setShowOrderForm(false)
             setEditingOrder(null)
